@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, request, jsonify
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
@@ -31,39 +31,36 @@ def recommend_whiskey(whisky_name, top_n=3):
         return []
     similarity_scores = similarity_matrix[idx]
     similar_indices = similarity_scores.argsort()[::-1][1:top_n+1]
-    return df.iloc[similar_indices][['Whisky', 'Meta Critic']].values.tolist()
+    results = df.iloc[similar_indices][['Whisky', 'Meta Critic']]
+    return results.to_dict(orient='records')
 
-# HTML template
-HTML_TEMPLATE = '''
-<!doctype html>
-<title>Whiskey Recommender</title>
-<h2>Whiskey Recommendation System</h2>
-<form action="/" method="post">
-  Enter a whiskey name: <input type="text" name="whiskey_name">
-  <input type="submit" value="Get Recommendations">
-</form>
+# JSON API route
+@app.route("/api", methods=["GET", "POST"])
+def api_recommend():
+    data = request.get_json()
+    print("📩 Received JSON:", data)
 
-{% if recommendations %}
-<h3>Recommendations for "{{ whiskey_name }}"</h3>
-<ul>
-  {% for whisky, score in recommendations %}
-    <li><strong>{{ whisky }}</strong> (Meta Critic: {{ score }})</li>
-  {% endfor %}
-</ul>
-{% elif whiskey_name %}
-<p>No results found for "<strong>{{ whiskey_name }}</strong>"</p>
-{% endif %}
-'''
+    if not data or "whiskey_name" not in data:
+        return jsonify({"error": "Missing 'whiskey_name' in request"}), 400
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    whiskey_name = ""
-    recommendations = []
-    if request.method == "POST":
-        whiskey_name = request.form["whiskey_name"]
-        recommendations = recommend_whiskey(whiskey_name)
+    whiskey_name = data["whiskey_name"]
+    recommendations = recommend_whiskey(whiskey_name)
 
-    return render_template_string(HTML_TEMPLATE, whiskey_name=whiskey_name, recommendations=recommendations)
+    if not recommendations:
+        response = {
+            "whiskey_name": whiskey_name,
+            "recommendations": [],
+            "message": "No matches found."
+        }
+        print("📤 Sending response JSON:", response)
+        return jsonify(response)
+
+    response = {
+        "whiskey_name": whiskey_name,
+        "recommendations": recommendations
+    }
+    print("📤 Sending response JSON:", response)
+    return jsonify(response)
 
 if __name__ == "__main__":
     app.run(debug=True)
