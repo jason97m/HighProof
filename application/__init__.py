@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 app = Flask(__name__)
 
 # --- Load data from CSV ---
-df = pd.read_csv("HIghProof/Meta-CriticWhiskeyDB.csv")
+df = pd.read_csv("Meta-CriticWhiskeyDB.csv")
 
 # Encode categorical variables
 categorical_cols = ['Cost', 'Class', 'Super Cluster', 'Cluster', 'Country', 'Type']
